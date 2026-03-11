@@ -1,0 +1,43 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: YOUR_PROJECT_ID
+  SERVICE: aiserver
+  REGION: asia-south1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Configure Docker
+      run: gcloud auth configure-docker
+
+    - name: Build Container
+      run: |
+        docker build -t gcr.io/$PROJECT_ID/$SERVICE .
+
+    - name: Push Container
+      run: |
+        docker push gcr.io/$PROJECT_ID/$SERVICE
+
+    - name: Deploy
+      run: |
+        gcloud run deploy $SERVICE \
+          --image gcr.io/$PROJECT_ID/$SERVICE \
+          --region $REGION \
+          --platform managed \
+          --allow-unauthenticated
